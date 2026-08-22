@@ -11,3 +11,6 @@ dist/
 build/
 .hatch/
 .ipynb_checkpoints/
+
+# Local-only workflow docs (superpowers specs, plans, working notes).
+docs/superpowers/
