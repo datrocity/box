@@ -130,6 +130,55 @@ class RunSet:
             rows.append({"name": r.name, "folder": r._folder, **r.params})
         return pd.DataFrame(rows)
 
+    def summarize(self, **summaries):
+        """Apply per-run callables and return a DataFrame of params + results.
+
+        Parameters
+        ----------
+        **summaries
+            column_name -> callable(run) -> scalar.
+
+        Returns
+        -------
+        pandas.DataFrame
+            One row per run with ``name``, ``folder``, all params, and one
+            column per summary name.
+        """
+        rows = []
+        for r in self._runs:
+            row = {"name": r.name, "folder": r._folder, **r.params}
+            for col, fn in summaries.items():
+                row[col] = fn(r)
+            rows.append(row)
+        return pd.DataFrame(rows)
+
+    def load_all(self, artifact_name):
+        """Load ``artifact_name`` from every run, returning (run, artifact) pairs.
+
+        Deliberately returns a list of pairs rather than a dict keyed by
+        ``run.name``: the common grid pattern (same experiment name, different
+        params) would silently collide under a name-keyed dict. Users that
+        want a dict can build one with the key that disambiguates their runs::
+
+            by_lr = {r.params["lr"]: art for r, art in runs.load_all("result")}
+
+        Parameters
+        ----------
+        artifact_name : str
+
+        Returns
+        -------
+        list of (Run, object)
+            One pair per run that has the artifact; runs missing it are skipped.
+        """
+        out = []
+        for r in self._runs:
+            try:
+                out.append((r, r.load(artifact_name)))
+            except ArtifactNotFound:
+                continue
+        return out
+
 
 def _load_run(project, folder):
     """Read a run's params.yaml + manifest.yml and return a Run."""

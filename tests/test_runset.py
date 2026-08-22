@@ -69,3 +69,50 @@ def test_run_load_specific_version(tmp_path):
     run = next(iter(proj.runs()))
     assert run.load("cfg") == {"v": 2}
     assert run.load("cfg", version=1) == {"v": 1}
+
+
+def test_summarize_returns_frame_with_params_and_summaries(tmp_path):
+    proj = _seed(tmp_path)
+    runs = proj.runs().where(prior="uniform")
+    summary = runs.summarize(
+        first_x=lambda r: r.load("result")["x"].iloc[0],
+        row_count=lambda r: len(r.load("result")),
+    )
+    assert set(summary.columns) >= {"name", "lr", "prior", "first_x", "row_count"}
+    assert len(summary) == 3
+    assert summary["row_count"].tolist() == [2, 2, 2]
+
+
+def test_load_all_returns_run_artifact_pairs(tmp_path):
+    proj = _seed(tmp_path)
+    hits = proj.runs().where(prior="uniform")
+    pairs = hits.load_all("result")
+
+    assert len(pairs) == 3
+    for run, art in pairs:
+        assert hasattr(run, "params")
+        assert isinstance(art, pd.DataFrame)
+
+
+def test_load_all_supports_same_name_grid(tmp_path):
+    """The common grid pattern: same experiment name, different params, one
+    entry per variant (no silent dict-key collision)."""
+    proj = init("walker", datastore=str(tmp_path))
+    for lr in [0.01, 0.02, 0.05]:
+        exp = proj.experiment("baseline", lr=lr)
+        exp.save(pd.DataFrame({"lr_col": [lr]}), "result")
+
+    pairs = proj.runs().load_all("result")
+    lrs = sorted(run.params["lr"] for run, _ in pairs)
+    assert lrs == [0.01, 0.02, 0.05]
+
+
+def test_load_all_skips_runs_missing_the_artifact(tmp_path):
+    proj = init("walker", datastore=str(tmp_path))
+    exp1 = proj.experiment("has_it", lr=0.01)
+    exp1.save({"x": 1}, "result")
+    proj.experiment("empty", lr=0.02)
+
+    pairs = proj.runs().load_all("result")
+    names = [run.name for run, _ in pairs]
+    assert names == ["has_it"]
