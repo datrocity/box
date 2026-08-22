@@ -1,5 +1,7 @@
 """Project: the top-level scope for a research catalog."""
 
+import weakref
+
 from box.artifact import get_artifact_for
 from box.errors import ArtifactNotFound
 from box.manifest.lineage import author_source, git_source, timestamp_source
@@ -25,6 +27,12 @@ class Project:
         else:
             self._datastore = datastore
         self._datastore.makedirs(name)
+        # Experiments register here on __init__; project.load records loaded
+        # URIs into every live entry. WeakSet: grid-loop cleanup is automatic.
+        self._active_experiments = weakref.WeakSet()
+
+    def _uri(self, artifact_name, version):
+        return f"box://{self.name}/global/{artifact_name}/v{version}"
 
     def _artifact_dir(self, artifact_name):
         return f"{self.name}/global/{artifact_name}"
@@ -156,6 +164,10 @@ class Project:
             ) from None
         ext = data_file.split(".", 1)[1]
         blob = self._datastore.read(f"{self._artifact_dir(name)}/{data_file}")
+        uri = self._uri(name, target)
+        # Snapshot: __del__ during iteration or close() could mutate the set.
+        for exp in list(self._active_experiments):
+            exp._record_input(uri)
         art_cls = _artifact_class_for_extension(ext)
         return art_cls().read_bytes(blob)
 

@@ -30,7 +30,9 @@ class Experiment:
         self._datastore = project._datastore
         self.name = name
         self.params = dict(params)
-        self._pending_inputs = []
+        # dict-as-ordered-set: keys are URIs, values ignored. Preserves
+        # insertion order and dedups on repeat loads.
+        self._loaded_inputs = {}
 
         folder_name = experiment_folder_name(dt.date.today(), name, params)
         base = f"{project.name}/{folder_name}"
@@ -46,12 +48,56 @@ class Experiment:
             )
             self._write_experiment_manifest()
 
+        project._active_experiments.add(self)
+
     def __getattr__(self, name):
         """Expose params as attributes: ``exp.lr`` returns ``self.params["lr"]``."""
         try:
             return self.__dict__["params"][name]
         except KeyError:
             raise AttributeError(name) from None
+
+    def _uri(self, artifact_name, version):
+        return f"box://{self._project.name}/{self.name}/{artifact_name}/v{version}"
+
+    def _record_input(self, uri):
+        """Add a URI to the experiment's cumulative loaded-inputs set."""
+        self._loaded_inputs[uri] = None
+
+    def _resolve_input_name(self, name_or_uri):
+        """Turn a user-supplied inputs= entry into a URI.
+
+        Full URIs (``box://...``) pass through. Short names are resolved to
+        this experiment's latest version of that artifact.
+        """
+        if name_or_uri.startswith("box://"):
+            return name_or_uri
+        latest = self._latest_version(name_or_uri)
+        if latest is None:
+            raise ArtifactNotFound(
+                f"cannot resolve inputs='{name_or_uri}': no such artifact "
+                f"in experiment '{self.name}'"
+            )
+        return self._uri(name_or_uri, latest)
+
+    def close(self):
+        """Stop tracking loads from ``proj.load`` into this experiment.
+
+        Called automatically when the experiment goes out of Python scope
+        (via the ``weakref.WeakSet`` on the project). Explicit ``close()`` is
+        only needed when you still hold a reference but want to stop
+        cross-scope input tracking.
+        """
+        self._project._active_experiments.discard(self)
+
+    def __enter__(self):
+        """Context-manager sugar: ``with proj.experiment(...) as exp:``."""
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        """Auto-close on ``with``-block exit."""
+        self.close()
+        return False
 
     def _find_existing_folder(self, project, name, params):
         from box.conventions import params_hash
@@ -131,7 +177,7 @@ class Experiment:
         card.update(author_source())
         return {k: str(v) for k, v in card.items()}
 
-    def save(self, data, name, format=None):
+    def save(self, data, name, format=None, inputs=None):
         """Save an artifact in this experiment.
 
         WRITE_ON_CHANGE semantics: identical ``data_hash`` appends a run
@@ -144,12 +190,22 @@ class Experiment:
         format : str, optional
             Opt-in format hint (e.g. ``"csv"`` for a human-readable DataFrame).
             When omitted, the default artifact class for the data type is used.
+        inputs : list of str, optional
+            Override the auto-tracked cumulative inputs. Entries may be short
+            artifact names (resolved to the latest version in this experiment)
+            or full ``box://`` URIs. If ``None`` (default), the manifest uses
+            the experiment's cumulative loaded-inputs set.
         """
         import joblib
 
         art_cls = get_artifact_for(data, format=format)
         art = art_cls()
         data_hash = joblib.hash(data)
+
+        if inputs is not None:
+            resolved_inputs = [self._resolve_input_name(x) for x in inputs]
+        else:
+            resolved_inputs = list(self._loaded_inputs)
 
         existing_version = self._latest_version(name) if self.has(name) else None
         if existing_version is not None:
@@ -168,7 +224,9 @@ class Experiment:
         blob = art.write_bytes(data, metadata=card)
         path = f"{self._artifact_dir(name)}/v{version}.{art.extension}"
         self._datastore.write(path, blob)
-        self._write_artifact_manifest(name, version, art.extension, data_hash)
+        self._write_artifact_manifest(
+            name, version, art.extension, data_hash, resolved_inputs
+        )
 
     def load(self, name, version=None):
         """Load an artifact from this experiment.
@@ -204,13 +262,14 @@ class Experiment:
         from box.project import _artifact_class_for_extension
 
         blob = self._datastore.read(f"{self._artifact_dir(name)}/{data_file}")
+        self._record_input(self._uri(name, target))
         return _artifact_class_for_extension(ext)().read_bytes(blob)
 
     def has(self, name):
         """Return True if the artifact ``name`` exists in this experiment."""
         return self._latest_version(name) is not None
 
-    def _write_artifact_manifest(self, name, version, extension, data_hash):
+    def _write_artifact_manifest(self, name, version, extension, data_hash, inputs):
         m = Manifest()
         m.add("artifact", name)
         m.add("version", f"v{version}")
@@ -223,6 +282,8 @@ class Experiment:
         m.merge("provenance", timestamp_source())
         m.merge("provenance", author_source())
         m.append("runs", {**timestamp_source(), **author_source()})
+        if inputs:
+            m.add("inputs", list(inputs))
         path = f"{self._artifact_dir(name)}/v{version}.manifest.yml"
         self._datastore.write(path, m.to_yaml().encode("utf-8"))
 
