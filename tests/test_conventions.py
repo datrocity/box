@@ -9,8 +9,7 @@ from box.conventions import (
 
 
 def test_write_mode_members():
-    assert WriteMode.ERROR_IF_EXISTS.name == "ERROR_IF_EXISTS"
-    assert WriteMode.OVERWRITE.name == "OVERWRITE"
+    # v1 ships a single mode; other modes may be added later.
     assert WriteMode.WRITE_ON_CHANGE.name == "WRITE_ON_CHANGE"
 
 

@@ -9,10 +9,11 @@ import json
 
 
 class WriteMode(enum.Enum):
-    """Behavior when writing an artifact that may already have a prior version."""
+    """Behavior when writing an artifact that may already have a prior version.
 
-    ERROR_IF_EXISTS = "error_if_exists"
-    OVERWRITE = "overwrite"
+    v1 ships a single mode; the enum is kept for future extension.
+    """
+
     WRITE_ON_CHANGE = "write_on_change"
 
 
