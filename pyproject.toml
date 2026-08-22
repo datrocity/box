@@ -1,0 +1,58 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "box"
+version = "0.1.0"
+description = "Experiment-first research catalog for scientists"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "BSD-3-Clause"
+authors = [{ name = "Pietro Berkes" }]
+dependencies = [
+  "pyyaml>=6.0",
+  "numpy>=1.25",
+  "pandas>=2.0",
+  "pillow>=10.0",
+  "pyarrow>=14.0",
+  "joblib>=1.3",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "pytest-cov>=4.0",
+  "ruff>=0.6",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["box"]
+
+[tool.hatch.envs.default]
+python = "3.11"
+features = ["dev"]
+
+[tool.hatch.envs.default.scripts]
+test = "pytest {args:tests}"
+cov = "pytest --cov=box --cov-report=term-missing {args:tests}"
+lint = "ruff check {args:.}"
+format = "ruff format {args:.}"
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "D"]
+ignore = ["D203", "D213"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
