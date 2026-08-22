@@ -195,6 +195,24 @@ class Project:
             params = params["params"]
         return Experiment(self, name, params)
 
+    def compute_or_load(self, artifact_name):
+        """Return a decorator that caches a zero-arg function as an artifact.
+
+        First call computes and saves; later calls load.
+
+        Parameters
+        ----------
+        artifact_name : str
+
+        Returns
+        -------
+        callable
+            Decorator to apply to a ``def`` returning the value.
+        """
+        from box.compute_or_load import make_compute_or_load
+
+        return make_compute_or_load(self)(artifact_name)
+
     def _write_manifest(self, name, version, extension, data_hash):
         m = Manifest()
         m.add("artifact", name)

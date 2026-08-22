@@ -269,6 +269,24 @@ class Experiment:
         """Return True if the artifact ``name`` exists in this experiment."""
         return self._latest_version(name) is not None
 
+    def compute_or_load(self, artifact_name):
+        """Return a decorator that caches a zero-arg function in this experiment.
+
+        First call computes and saves; later calls load.
+
+        Parameters
+        ----------
+        artifact_name : str
+
+        Returns
+        -------
+        callable
+            Decorator to apply to a ``def`` returning the value.
+        """
+        from box.compute_or_load import make_compute_or_load
+
+        return make_compute_or_load(self)(artifact_name)
+
     def _write_artifact_manifest(self, name, version, extension, data_hash, inputs):
         m = Manifest()
         m.add("artifact", name)
