@@ -82,3 +82,8 @@ def get_artifact_for(data, format=None):
         If no artifact class matches.
     """
     return _DEFAULT_REGISTRY.get_for(data, format=format)
+
+
+# Import concrete artifact modules so they call register_artifact on import.
+# Kept at the bottom to avoid circular imports.
+from box.artifact import dict_, numpy_, pandas_, pandas_csv, pil_  # noqa: E402, F401
