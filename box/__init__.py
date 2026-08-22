@@ -27,4 +27,27 @@ def experiment(project_name, exp_name, datastore=None, **params):
     return proj.experiment(exp_name, **params)
 
 
-__all__ = ["Experiment", "Project", "Run", "RunSet", "experiment", "init"]
+def skills_path():
+    """Return the path to the shipped ``box/skills/`` directory.
+
+    Useful for AI assistants that want to symlink or copy the skill files
+    into their local skills directory.
+
+    Returns
+    -------
+    pathlib.Path
+    """
+    from pathlib import Path
+
+    return Path(__file__).parent / "skills"
+
+
+__all__ = [
+    "Experiment",
+    "Project",
+    "Run",
+    "RunSet",
+    "experiment",
+    "init",
+    "skills_path",
+]

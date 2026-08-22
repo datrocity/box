@@ -29,6 +29,14 @@ dev = [
 [tool.hatch.build.targets.wheel]
 packages = ["box"]
 
+# Ensure skills (.md files) are packaged with the wheel so pip-installed
+# users can copy them into ~/.claude/skills/ via `box install-skills`.
+[tool.hatch.build.targets.wheel.force-include]
+"box/skills" = "box/skills"
+
+[project.scripts]
+box = "box.__main__:main"
+
 [tool.hatch.envs.default]
 python = "3.11"
 features = ["dev"]
@@ -42,6 +50,7 @@ format = "ruff format {args:.}"
 [tool.ruff]
 line-length = 88
 target-version = "py311"
+extend-exclude = ["notebook"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "D"]
