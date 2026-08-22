@@ -51,3 +51,7 @@ def test_metadata_none_still_roundtrips():
     blob = art.write_bytes(img, metadata=None)
     back = art.read_bytes(blob)
     assert list(back.getdata()) == list(img.getdata())
+
+
+# TODO(Pillow 14, ~2027-10): migrate `img.getdata()` above to
+# `img.get_flattened_data()`. Currently silenced-only warning.
