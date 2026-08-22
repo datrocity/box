@@ -1,33 +1,87 @@
-"""Project: the top-level scope for a research catalog."""
+"""Experiment: a named run with frozen params, backed by a folder."""
+
+import datetime as dt
+
+import yaml
 
 from box.artifact import get_artifact_for
+from box.conventions import experiment_folder_name
 from box.errors import ArtifactNotFound
 from box.manifest.lineage import author_source, git_source, timestamp_source
 from box.manifest.manifest import Manifest
-from box.storage.file_datastore import FileDatastore
 
 
-class Project:
-    """A named research workspace backed by a datastore.
+class Experiment:
+    """A named experiment with frozen params.
+
+    Identity is ``(project, name, params)``. Re-invoking with the same identity
+    returns a handle to the existing folder; a subsequent save appends to the
+    ``runs:`` list in the affected artifact manifests.
 
     Parameters
     ----------
+    project : Project
     name : str
-        Project name, e.g. ``"walker"``.
-    datastore : str or Datastore
-        Filesystem path (string) or a ``Datastore`` instance.
+    params : dict
     """
 
-    def __init__(self, name, datastore):
+    def __init__(self, project, name, params):
+        self._project = project
+        self._datastore = project._datastore
         self.name = name
-        if isinstance(datastore, str):
-            self._datastore = FileDatastore(datastore)
+        self.params = dict(params)
+        self._pending_inputs = []
+
+        folder_name = experiment_folder_name(dt.date.today(), name, params)
+        base = f"{project.name}/{folder_name}"
+        actual = self._find_existing_folder(project, name, params)
+        if actual is not None:
+            self._folder = actual
         else:
-            self._datastore = datastore
-        self._datastore.makedirs(name)
+            self._folder = base
+            self._datastore.makedirs(self._folder)
+            self._datastore.write(
+                f"{self._folder}/params.yaml",
+                yaml.safe_dump(self.params, sort_keys=True).encode("utf-8"),
+            )
+            self._write_experiment_manifest()
+
+    def __getattr__(self, name):
+        """Expose params as attributes: ``exp.lr`` returns ``self.params["lr"]``."""
+        try:
+            return self.__dict__["params"][name]
+        except KeyError:
+            raise AttributeError(name) from None
+
+    def _find_existing_folder(self, project, name, params):
+        from box.conventions import params_hash
+
+        suffix = f"__{name}__{params_hash(params)}"
+        try:
+            entries = self._datastore.list_dir(project.name)
+        except KeyError:
+            return None
+        for entry in entries:
+            if entry == "global":
+                continue
+            if entry.endswith(suffix):
+                return f"{project.name}/{entry}"
+        return None
+
+    def _write_experiment_manifest(self):
+        m = Manifest()
+        m.add("project", self._project.name)
+        m.add("experiment", self.name)
+        m.add("params", dict(self.params))
+        m.merge("code", git_source().get("code", {}))
+        m.merge("provenance", timestamp_source())
+        m.merge("provenance", author_source())
+        self._datastore.write(
+            f"{self._folder}/manifest.yml", m.to_yaml().encode("utf-8")
+        )
 
     def _artifact_dir(self, artifact_name):
-        return f"{self.name}/global/{artifact_name}"
+        return f"{self._folder}/{artifact_name}"
 
     def _list_artifact_dir(self, artifact_name):
         """Return children of an artifact dir, or [] if the dir does not exist."""
@@ -38,41 +92,36 @@ class Project:
 
     def _next_version(self, artifact_name):
         children = self._list_artifact_dir(artifact_name)
-        existing = [
-            c
-            for c in children
-            if c.startswith("v")
-            and "." in c
-            and c.split(".")[0][1:].isdigit()
-            and not c.endswith(".manifest.yml")
-        ]
-        if not existing:
-            return 1
-        nums = [int(c.split(".")[0][1:]) for c in existing]
-        return max(nums) + 1
+        nums = []
+        for c in children:
+            if c.startswith("v") and not c.endswith(".manifest.yml"):
+                try:
+                    nums.append(int(c.split(".")[0][1:]))
+                except ValueError:
+                    pass
+        return (max(nums) + 1) if nums else 1
 
     def _latest_version(self, artifact_name):
         children = self._list_artifact_dir(artifact_name)
-        data_files = [
-            c
-            for c in children
-            if c.startswith("v") and not c.endswith(".manifest.yml")
-        ]
-        if not data_files:
-            return None
-        nums = [int(c.split(".")[0][1:]) for c in data_files]
-        return max(nums)
+        nums = []
+        for c in children:
+            if c.startswith("v") and not c.endswith(".manifest.yml"):
+                try:
+                    nums.append(int(c.split(".")[0][1:]))
+                except ValueError:
+                    pass
+        return max(nums) if nums else None
 
     def _business_card(self, name, version):
         """Build the stringified 'business card' embedded inside artifacts."""
         import json
 
         card = {
-            "project": self.name,
-            "experiment": "global",
+            "project": self._project.name,
+            "experiment": self.name,
             "artifact": name,
             "version": f"v{version}",
-            "params": json.dumps({}),
+            "params": json.dumps(self.params, sort_keys=True),
         }
         code = git_source().get("code", {})
         if code:
@@ -83,20 +132,15 @@ class Project:
         return {k: str(v) for k, v in card.items()}
 
     def save(self, data, name, format=None):
-        """Save an artifact at the project (global) scope.
+        """Save an artifact in this experiment.
 
-        WRITE_ON_CHANGE semantics: if ``joblib.hash(data)`` matches the latest
-        version's stored hash, no new version file is written; instead a run
-        entry is appended to the existing manifest. Different data creates a
-        new numbered version.
+        WRITE_ON_CHANGE semantics: identical ``data_hash`` appends a run
+        record to the existing manifest; different data creates a new version.
 
         Parameters
         ----------
         data : object
-            The data to save. Its type determines the on-disk format via the
-            artifact registry.
         name : str
-            Artifact name, e.g. ``"processed_input"``.
         format : str, optional
             Opt-in format hint (e.g. ``"csv"`` for a human-readable DataFrame).
             When omitted, the default artifact class for the data type is used.
@@ -124,24 +168,25 @@ class Project:
         blob = art.write_bytes(data, metadata=card)
         path = f"{self._artifact_dir(name)}/v{version}.{art.extension}"
         self._datastore.write(path, blob)
-        self._write_manifest(name, version, art.extension, data_hash)
+        self._write_artifact_manifest(name, version, art.extension, data_hash)
 
     def load(self, name, version=None):
-        """Load a version of a project-scope artifact.
+        """Load an artifact from this experiment.
 
         Parameters
         ----------
         name : str
         version : int, optional
-            Version number to load (1-based). If omitted, loads the latest.
+            Version to load. Defaults to the latest.
 
         Raises
         ------
         ArtifactNotFound
-            If no such artifact exists, or the requested version does not exist.
         """
         if not self.has(name):
-            raise ArtifactNotFound(f"no artifact '{name}' in project '{self.name}'")
+            raise ArtifactNotFound(
+                f"no artifact '{name}' in experiment '{self.name}'"
+            )
         target = version if version is not None else self._latest_version(name)
         children = self._list_artifact_dir(name)
         try:
@@ -152,45 +197,28 @@ class Project:
             )
         except StopIteration:
             raise ArtifactNotFound(
-                f"artifact '{name}' has no version v{target} in project '{self.name}'"
+                f"artifact '{name}' has no version v{target} "
+                f"in experiment '{self.name}'"
             ) from None
         ext = data_file.split(".", 1)[1]
+        from box.project import _artifact_class_for_extension
+
         blob = self._datastore.read(f"{self._artifact_dir(name)}/{data_file}")
-        art_cls = _artifact_class_for_extension(ext)
-        return art_cls().read_bytes(blob)
+        return _artifact_class_for_extension(ext)().read_bytes(blob)
 
     def has(self, name):
-        """Return True if the artifact ``name`` exists in this project."""
+        """Return True if the artifact ``name`` exists in this experiment."""
         return self._latest_version(name) is not None
 
-    def experiment(self, name, **params):
-        """Create or reopen an experiment with the given name and params.
-
-        Parameters
-        ----------
-        name : str
-        **params
-            Keyword args become the params dict; a single ``params=`` dict is
-            also accepted.
-
-        Returns
-        -------
-        Experiment
-        """
-        from box.experiment import Experiment
-
-        if "params" in params and len(params) == 1:
-            params = params["params"]
-        return Experiment(self, name, params)
-
-    def _write_manifest(self, name, version, extension, data_hash):
+    def _write_artifact_manifest(self, name, version, extension, data_hash):
         m = Manifest()
         m.add("artifact", name)
         m.add("version", f"v{version}")
-        m.add("project", self.name)
-        m.add("scope", "global")
+        m.add("project", self._project.name)
+        m.add("experiment", self.name)
         m.add("extension", extension)
         m.add("data_hash", data_hash)
+        m.add("params", dict(self.params))
         m.merge("code", git_source().get("code", {}))
         m.merge("provenance", timestamp_source())
         m.merge("provenance", author_source())
@@ -204,28 +232,3 @@ class Project:
         m = Manifest.from_yaml(text)
         m.append("runs", {**timestamp_source(), **author_source()})
         self._datastore.write(path, m.to_yaml().encode("utf-8"))
-
-
-def _artifact_class_for_extension(extension):
-    """Find the artifact class registered for a file extension."""
-    from box.artifact import _DEFAULT_REGISTRY
-
-    for cls in set(_DEFAULT_REGISTRY._by_type_and_format.values()):
-        if cls.extension == extension:
-            return cls
-    raise ValueError(f"no artifact class registered for extension '{extension}'")
-
-
-def init(name, datastore):
-    """Create a Project handle.
-
-    Parameters
-    ----------
-    name : str
-    datastore : str or Datastore
-
-    Returns
-    -------
-    Project
-    """
-    return Project(name, datastore)
