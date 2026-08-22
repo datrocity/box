@@ -6,6 +6,7 @@ import pyarrow.parquet as pq
 
 from box.artifact import get_artifact_for
 from box.artifact.pandas_ import PandasDataFrameArtifact
+from box.artifact.pandas_csv import PandasCsvArtifact
 
 
 def test_registered_on_import():
@@ -51,3 +52,39 @@ def test_metadata_none_still_roundtrips():
     df = pd.DataFrame({"a": [1, 2]})
     blob = art.write_bytes(df, metadata=None)
     pdt.assert_frame_equal(art.read_bytes(blob), df)
+
+
+def test_csv_registered_as_format_csv_for_dataframe():
+    df = pd.DataFrame({"a": [1, 2]})
+    assert get_artifact_for(df, format="csv") is PandasCsvArtifact
+    assert get_artifact_for(df) is PandasDataFrameArtifact
+
+
+def test_csv_extension_is_csv():
+    assert PandasCsvArtifact.extension == "csv"
+
+
+def test_csv_roundtrip_preserves_dataframe():
+    art = PandasCsvArtifact()
+    df = pd.DataFrame(
+        {"a": [1, 2, 3], "b": ["x", "y", "z"]},
+        index=pd.Index([10, 11, 12], name="ix"),
+    )
+    blob = art.write_bytes(df)
+    back = art.read_bytes(blob)
+    pdt.assert_frame_equal(back, df)
+
+
+def test_csv_metadata_is_embedded_as_comment_lines():
+    art = PandasCsvArtifact()
+    df = pd.DataFrame({"a": [1, 2]})
+    card = {"project": "walker", "experiment": "baseline", "artifact": "result"}
+    blob = art.write_bytes(df, metadata=card)
+    head = blob.decode("utf-8").splitlines()
+    comment_lines = [ln for ln in head if ln.startswith("#")]
+    joined = " ".join(comment_lines)
+    for k, v in card.items():
+        assert k in joined
+        assert v in joined
+    back = art.read_bytes(blob)
+    pdt.assert_frame_equal(back, df)
