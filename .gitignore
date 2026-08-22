@@ -12,5 +12,9 @@ build/
 .hatch/
 .ipynb_checkpoints/
 
+# Notebook byproducts (executed catalogs, executed.ipynb).
+notebook/catalog/
+notebook/executed.ipynb
+
 # Local-only workflow docs (superpowers specs, plans, working notes).
 docs/superpowers/
