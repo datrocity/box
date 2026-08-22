@@ -213,6 +213,17 @@ class Project:
 
         return make_compute_or_load(self)(artifact_name)
 
+    def runs(self):
+        """Return a RunSet of every experiment in this project.
+
+        Returns
+        -------
+        RunSet
+        """
+        from box.runset import load_runs
+
+        return load_runs(self)
+
     def _write_manifest(self, name, version, extension, data_hash):
         m = Manifest()
         m.add("artifact", name)

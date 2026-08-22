@@ -2,6 +2,7 @@
 
 from box.experiment import Experiment
 from box.project import Project, init
+from box.runset import Run, RunSet
 
 
 def experiment(project_name, exp_name, datastore=None, **params):
@@ -26,4 +27,4 @@ def experiment(project_name, exp_name, datastore=None, **params):
     return proj.experiment(exp_name, **params)
 
 
-__all__ = ["Experiment", "Project", "experiment", "init"]
+__all__ = ["Experiment", "Project", "Run", "RunSet", "experiment", "init"]
