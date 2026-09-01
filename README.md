@@ -130,7 +130,7 @@ For non-Claude tools, point the assistant at `AGENTS.md` in the source repo, or 
 
 ## Development
 
-    make setup        # create poetry env
+    make setup        # create local .venv and install
     make test          # run tests
     make lint          # ruff
     make format        # ruff format

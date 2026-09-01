@@ -1,6 +1,6 @@
 [build-system]
-requires = ["poetry-core>=2.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "box"
@@ -18,19 +18,23 @@ dependencies = [
   "joblib>=1.3",
 ]
 
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "pytest-cov>=4.0",
+  "ruff>=0.6",
+]
+
 [project.scripts]
 box = "box.__main__:main"
 
-[tool.poetry]
-packages = [{ include = "box" }]
+[tool.setuptools.packages.find]
+include = ["box*"]
+
 # Ensure skills (.md files) are packaged with the wheel so pip-installed
 # users can copy them into ~/.claude/skills/ via `box install-skills`.
-include = ["box/skills/*.md"]
-
-[tool.poetry.group.dev.dependencies]
-pytest = ">=8.0"
-pytest-cov = ">=4.0"
-ruff = ">=0.6"
+[tool.setuptools.package-data]
+"box.skills" = ["*.md"]
 
 [tool.ruff]
 line-length = 88
