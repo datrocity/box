@@ -46,15 +46,15 @@ For non-Claude tools, point the assistant at `AGENTS.md` (in the source repo). T
       global/                                          <- project-scope shared artifacts
         processed_input/
           v1.parquet
-          v1.manifest.yml
+          v1.manifest.json
       2026-08-15__baseline__a3f18d02/                  <- experiment folder
-        params.yaml
-        manifest.yml
+        params.json
+        manifest.json
         result/
           v1.parquet
-          v1.manifest.yml
+          v1.manifest.json
 
-Every experiment folder is self-contained: `ls` shows every artifact that run produced; `params.yaml` lets you reconstruct the params; every artifact carries its own manifest so it survives being moved.
+Every experiment folder is self-contained: `ls` shows every artifact that run produced; `params.json` lets you reconstruct the params; every artifact carries its own manifest so it survives being moved.
 
 ## Development
 
@@ -65,7 +65,7 @@ Every experiment folder is self-contained: `ls` shows every artifact that run pr
 
 ## Requirements
 
-Python 3.11+. Depends on pyyaml, numpy, pandas, pillow, pyarrow, joblib.
+Python 3.11+. Depends on numpy, pandas, pillow, pyarrow, joblib.
 
 ## License
 

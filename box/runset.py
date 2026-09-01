@@ -1,7 +1,8 @@
 """RunSet: filterable, iterable view over a project's experiments."""
 
+import json
+
 import pandas as pd
-import yaml
 
 from box.errors import ArtifactNotFound
 
@@ -47,7 +48,7 @@ class Run:
             ) from None
         data_files = [
             c for c in children
-            if not c.endswith(".manifest.yml") and c.startswith("v")
+            if not c.endswith(".manifest.json") and c.startswith("v")
         ]
         if not data_files:
             raise ArtifactNotFound(
@@ -181,12 +182,12 @@ class RunSet:
 
 
 def _load_run(project, folder):
-    """Read a run's params.yaml + manifest.yml and return a Run."""
+    """Read a run's params.json + manifest.json and return a Run."""
     ds = project._datastore
-    params_text = ds.read(f"{folder}/params.yaml").decode("utf-8")
-    params = yaml.safe_load(params_text) or {}
-    manifest_text = ds.read(f"{folder}/manifest.yml").decode("utf-8")
-    manifest = yaml.safe_load(manifest_text) or {}
+    params_text = ds.read(f"{folder}/params.json").decode("utf-8")
+    params = json.loads(params_text) or {}
+    manifest_text = ds.read(f"{folder}/manifest.json").decode("utf-8")
+    manifest = json.loads(manifest_text) or {}
     name = manifest.get("experiment", folder.split("__", 2)[1])
     return Run(project, folder, name, params)
 
@@ -203,6 +204,6 @@ def load_runs(project):
         if entry == "global":
             continue
         folder = f"{project.name}/{entry}"
-        if ds.exists(f"{folder}/params.yaml"):
+        if ds.exists(f"{folder}/params.json"):
             runs.append(_load_run(project, folder))
     return RunSet(runs)

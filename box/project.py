@@ -52,7 +52,7 @@ class Project:
             if c.startswith("v")
             and "." in c
             and c.split(".")[0][1:].isdigit()
-            and not c.endswith(".manifest.yml")
+            and not c.endswith(".manifest.json")
         ]
         if not existing:
             return 1
@@ -64,7 +64,7 @@ class Project:
         data_files = [
             c
             for c in children
-            if c.startswith("v") and not c.endswith(".manifest.yml")
+            if c.startswith("v") and not c.endswith(".manifest.json")
         ]
         if not data_files:
             return None
@@ -118,9 +118,9 @@ class Project:
         existing_version = self._latest_version(name) if self.has(name) else None
         if existing_version is not None:
             prev_manifest_path = (
-                f"{self._artifact_dir(name)}/v{existing_version}.manifest.yml"
+                f"{self._artifact_dir(name)}/v{existing_version}.manifest.json"
             )
-            prev = Manifest.from_yaml(
+            prev = Manifest.from_json(
                 self._datastore.read(prev_manifest_path).decode("utf-8")
             )
             if prev.sections.get("data_hash") == data_hash:
@@ -156,7 +156,7 @@ class Project:
             data_file = next(
                 c
                 for c in children
-                if c.startswith(f"v{target}.") and not c.endswith(".manifest.yml")
+                if c.startswith(f"v{target}.") and not c.endswith(".manifest.json")
             )
         except StopIteration:
             raise ArtifactNotFound(
@@ -236,15 +236,15 @@ class Project:
         m.merge("provenance", timestamp_source())
         m.merge("provenance", author_source())
         m.append("runs", {**timestamp_source(), **author_source()})
-        path = f"{self._artifact_dir(name)}/v{version}.manifest.yml"
-        self._datastore.write(path, m.to_yaml().encode("utf-8"))
+        path = f"{self._artifact_dir(name)}/v{version}.manifest.json"
+        self._datastore.write(path, m.to_json().encode("utf-8"))
 
     def _append_run_to_manifest(self, name, version):
-        path = f"{self._artifact_dir(name)}/v{version}.manifest.yml"
+        path = f"{self._artifact_dir(name)}/v{version}.manifest.json"
         text = self._datastore.read(path).decode("utf-8")
-        m = Manifest.from_yaml(text)
+        m = Manifest.from_json(text)
         m.append("runs", {**timestamp_source(), **author_source()})
-        self._datastore.write(path, m.to_yaml().encode("utf-8"))
+        self._datastore.write(path, m.to_json().encode("utf-8"))
 
 
 def _artifact_class_for_extension(extension):

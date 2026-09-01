@@ -56,7 +56,7 @@ You are helping a researcher bring years of accumulated files into a box catalog
 - `.npz` → `numpy.load` (yields a dict; ask user how to split)
 - `.png`, `.jpg`, `.jpeg` → `PIL.Image.open`
 - `.json` → `json.load` — save as dict artifact
-- `.yaml`, `.yml` → `yaml.safe_load` — save as dict artifact
+- `.yaml`, `.yml` → `yaml.safe_load` — save as dict artifact (`pyyaml` is not a `box` dependency; `pip install pyyaml` if missing)
 - Unknown → skip and report
 
 ## Anti-patterns

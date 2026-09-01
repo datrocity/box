@@ -25,7 +25,7 @@ def test_project_save_writes_to_global_folder(tmp_path):
     proj.save({"k": "v"}, "config")
     assert (tmp_path / "catalog" / "walker" / "global" / "config" / "v1.json").is_file()
     assert (
-        tmp_path / "catalog" / "walker" / "global" / "config" / "v1.manifest.yml"
+        tmp_path / "catalog" / "walker" / "global" / "config" / "v1.manifest.json"
     ).is_file()
 
 
@@ -83,6 +83,9 @@ def test_project_write_on_change_no_new_file_for_identical_data(tmp_path):
     files = sorted(
         (tmp_path / "catalog" / "walker" / "global" / "cfg").iterdir()
     )
-    data_files = [f for f in files if f.name.endswith(".json")]
+    data_files = [
+        f for f in files
+        if f.name.endswith(".json") and not f.name.endswith(".manifest.json")
+    ]
     assert len(data_files) == 1
     assert data_files[0].name == "v1.json"

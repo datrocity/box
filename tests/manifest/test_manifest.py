@@ -3,7 +3,7 @@ from box.manifest.manifest import Manifest
 
 def test_empty_manifest_roundtrip():
     m = Manifest()
-    assert Manifest.from_yaml(m.to_yaml()).sections == {}
+    assert Manifest.from_json(m.to_json()).sections == {}
 
 
 def test_add_and_get_section():
@@ -35,10 +35,10 @@ def test_append_to_list_section():
     ]
 
 
-def test_yaml_roundtrip_preserves_content():
+def test_json_roundtrip_preserves_content():
     m = Manifest()
     m.add("params", {"lr": 0.01})
     m.add("code", {"git_sha": "abc123", "dirty": False})
     m.append("runs", {"at": "2026-08-15T14:22:03Z"})
-    round_tripped = Manifest.from_yaml(m.to_yaml())
+    round_tripped = Manifest.from_json(m.to_json())
     assert round_tripped.sections == m.sections

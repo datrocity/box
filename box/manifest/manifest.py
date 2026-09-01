@@ -1,13 +1,13 @@
-"""Manifest: a container of named metadata sections that round-trips through YAML."""
+"""Manifest: a container of named metadata sections that round-trips through JSON."""
 
-import yaml
+import json
 
 
 class Manifest:
     """A named collection of metadata sections.
 
     Sections can be dicts (merged), lists (appended), or scalars (replaced).
-    The manifest serializes to YAML with insertion-preserving key order.
+    The manifest serializes to JSON with insertion-preserving key order.
     """
 
     def __init__(self, sections=None):
@@ -45,17 +45,17 @@ class Manifest:
         existing = self.sections.setdefault(section, [])
         existing.append(entry)
 
-    def to_yaml(self):
-        """Return the manifest as a YAML string."""
-        return yaml.safe_dump(self.sections, sort_keys=False)
+    def to_json(self):
+        """Return the manifest as a JSON string."""
+        return json.dumps(self.sections, indent=2)
 
     @classmethod
-    def from_yaml(cls, text):
-        """Parse a YAML string into a Manifest.
+    def from_json(cls, text):
+        """Parse a JSON string into a Manifest.
 
         Returns
         -------
         Manifest
         """
-        data = yaml.safe_load(text) or {}
+        data = json.loads(text) or {}
         return cls(sections=data)
