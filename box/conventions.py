@@ -77,7 +77,7 @@ def experiment_folder_name(creation_date, name, params):
 def is_data_file(filename):
     """Return True if ``filename`` is a versioned artifact data file.
 
-    Excludes the per-version manifest sidecar (``v{N}.manifest.json``), which
+    Excludes the per-version manifest file (``v{N}.manifest.json``), which
     shares the ``v{N}`` prefix but is not the data file itself.
 
     Parameters

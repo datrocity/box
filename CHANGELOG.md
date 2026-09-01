@@ -7,7 +7,7 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
-- Metadata sidecars (`params.yaml`/`manifest.yml`/`v{N}.manifest.yml`) are
+- Metadata files (`params.yaml`/`manifest.yml`/`v{N}.manifest.yml`) are
   now written as `params.json`/`manifest.json`/`v{N}.manifest.json`.
   **Breaking:** catalogs created before this change are not read back —
   `proj.runs()` silently skips experiment folders that only have

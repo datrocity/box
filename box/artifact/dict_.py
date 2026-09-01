@@ -21,7 +21,7 @@ class DictArtifact(Artifact):
         metadata : dict or None
             Ignored -- embedding would require wrapping the JSON in
             ``{_box_metadata, _box_data}`` and changing the on-disk shape.
-            The sidecar ``.manifest.json`` remains the source of truth.
+            The ``.manifest.json`` file remains the source of truth.
 
         Returns
         -------

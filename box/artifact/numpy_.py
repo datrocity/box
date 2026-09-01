@@ -22,7 +22,7 @@ class NumpyArrayArtifact(Artifact):
         data : numpy.ndarray
         metadata : dict or None
             Ignored -- the .npy format has no place to embed metadata. The
-            sidecar ``.manifest.json`` remains the source of truth.
+            The ``.manifest.json`` file remains the source of truth.
 
         Returns
         -------
