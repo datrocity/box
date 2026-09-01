@@ -13,7 +13,12 @@ from box.conventions import (
     next_version,
 )
 from box.errors import ArtifactNotFound
-from box.manifest.lineage import author_source, git_source, timestamp_source
+from box.manifest.lineage import (
+    activity_source,
+    author_source,
+    git_source,
+    timestamp_source,
+)
 from box.manifest.manifest import Manifest
 
 
@@ -129,7 +134,8 @@ class Experiment:
         m.add("params", dict(self.params))
         m.merge("code", git_source().get("code", {}))
         m.merge("provenance", timestamp_source())
-        m.merge("provenance", author_source())
+        m.merge("provenance", author_source(self._project.author))
+        m.merge("provenance", activity_source(self._project.activity))
         self._datastore.write(
             f"{self._folder}/{EXPERIMENT_MANIFEST_FILENAME}",
             m.to_json().encode("utf-8"),
@@ -165,7 +171,9 @@ class Experiment:
             card["git_sha"] = code.get("git_sha", "")
             card["dirty"] = str(code.get("dirty", False))
         card.update(timestamp_source())
-        card.update(author_source())
+        card.update(author_source(self._project.author))
+        if self._project.activity is not None:
+            card["activity"] = self._project.activity
         return {k: str(v) for k, v in card.items()}
 
     def save(self, data, name, format=None, inputs=None):
@@ -289,16 +297,24 @@ class Experiment:
         m.add("params", dict(self.params))
         m.merge("code", git_source().get("code", {}))
         m.merge("provenance", timestamp_source())
-        m.merge("provenance", author_source())
-        m.append("runs", {**timestamp_source(), **author_source()})
+        m.merge("provenance", author_source(self._project.author))
+        m.merge("provenance", activity_source(self._project.activity))
+        m.append("runs", self._run_record())
         if inputs:
             m.add("inputs", list(inputs))
         path = f"{self._artifact_dir(name)}/v{version}{MANIFEST_SUFFIX}"
         self._datastore.write(path, m.to_json().encode("utf-8"))
 
+    def _run_record(self):
+        return {
+            **timestamp_source(),
+            **author_source(self._project.author),
+            **activity_source(self._project.activity),
+        }
+
     def _append_run_to_manifest(self, name, version):
         path = f"{self._artifact_dir(name)}/v{version}{MANIFEST_SUFFIX}"
         text = self._datastore.read(path).decode("utf-8")
         m = Manifest.from_json(text)
-        m.append("runs", {**timestamp_source(), **author_source()})
+        m.append("runs", self._run_record())
         self._datastore.write(path, m.to_json().encode("utf-8"))

@@ -5,7 +5,14 @@ import weakref
 from box.artifact import get_artifact_for
 from box.conventions import MANIFEST_SUFFIX, latest_version, next_version
 from box.errors import ArtifactNotFound
-from box.manifest.lineage import author_source, git_source, timestamp_source
+from box.manifest.lineage import (
+    activity_source,
+    author_source,
+    detect_activity,
+    detect_author,
+    git_source,
+    timestamp_source,
+)
 from box.manifest.manifest import Manifest
 from box.storage.file_datastore import FileDatastore
 
@@ -19,15 +26,25 @@ class Project:
         Project name, e.g. ``"walker"``.
     datastore : str or Datastore
         Filesystem path (string) or a ``Datastore`` instance.
+    activity : str, optional
+        The script, notebook, or process producing this project's data.
+        Recorded in every manifest written by this project (and by any
+        experiment created from it). If omitted, detected automatically
+        where possible (see ``detect_activity``); otherwise None.
+    author : str, optional
+        Overrides the auto-detected OS username for every manifest written
+        by this project (and by any experiment created from it).
     """
 
-    def __init__(self, name, datastore):
+    def __init__(self, name, datastore, activity=None, author=None):
         self.name = name
         if isinstance(datastore, str):
             self._datastore = FileDatastore(datastore)
         else:
             self._datastore = datastore
         self._datastore.makedirs(name)
+        self.author = author if author is not None else detect_author()
+        self.activity = activity if activity is not None else detect_activity()
         # Experiments register here on __init__; project.load records loaded
         # URIs into every live entry. WeakSet: grid-loop cleanup is automatic.
         self._active_experiments = weakref.WeakSet()
@@ -67,7 +84,9 @@ class Project:
             card["git_sha"] = code.get("git_sha", "")
             card["dirty"] = str(code.get("dirty", False))
         card.update(timestamp_source())
-        card.update(author_source())
+        card.update(author_source(self.author))
+        if self.activity is not None:
+            card["activity"] = self.activity
         return {k: str(v) for k, v in card.items()}
 
     def save(self, data, name, format=None):
@@ -214,16 +233,24 @@ class Project:
         m.add("data_hash", data_hash)
         m.merge("code", git_source().get("code", {}))
         m.merge("provenance", timestamp_source())
-        m.merge("provenance", author_source())
-        m.append("runs", {**timestamp_source(), **author_source()})
+        m.merge("provenance", author_source(self.author))
+        m.merge("provenance", activity_source(self.activity))
+        m.append("runs", self._run_record())
         path = f"{self._artifact_dir(name)}/v{version}{MANIFEST_SUFFIX}"
         self._datastore.write(path, m.to_json().encode("utf-8"))
+
+    def _run_record(self):
+        return {
+            **timestamp_source(),
+            **author_source(self.author),
+            **activity_source(self.activity),
+        }
 
     def _append_run_to_manifest(self, name, version):
         path = f"{self._artifact_dir(name)}/v{version}{MANIFEST_SUFFIX}"
         text = self._datastore.read(path).decode("utf-8")
         m = Manifest.from_json(text)
-        m.append("runs", {**timestamp_source(), **author_source()})
+        m.append("runs", self._run_record())
         self._datastore.write(path, m.to_json().encode("utf-8"))
 
 
@@ -237,16 +264,21 @@ def _artifact_class_for_extension(extension):
     raise ValueError(f"no artifact class registered for extension '{extension}'")
 
 
-def init(name, datastore):
+def init(name, datastore, activity=None, author=None):
     """Create a Project handle.
 
     Parameters
     ----------
     name : str
     datastore : str or Datastore
+    activity : str, optional
+        The script, notebook, or process producing this project's data.
+        Auto-detected where possible if omitted.
+    author : str, optional
+        Overrides the auto-detected OS username.
 
     Returns
     -------
     Project
     """
-    return Project(name, datastore)
+    return Project(name, datastore, activity=activity, author=author)

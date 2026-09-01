@@ -54,6 +54,12 @@ exp.load("result", version=1)    # a specific one, e.g. to reproduce an old plot
 
 A **project-scope** save/load (`project.save(...)` / `project.load(...)`) works the same way, for things shared across every experiment — a preprocessed dataset, say — rather than belonging to one run.
 
+Every manifest also records who and what produced it: the OS username, and the running script or notebook name (`activity`), auto-detected where possible. Override either at init time if the auto-detected values aren't what you want:
+
+```python
+project = box.init("walker", datastore="./catalog", activity="train.py", author="jane")
+```
+
 `box` picks a storage format from the data's type:
 
 | Python type | On-disk format | Notes |

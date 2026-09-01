@@ -5,7 +5,9 @@ from box.project import Project, init
 from box.runset import Run, RunSet
 
 
-def experiment(project_name, exp_name, datastore=None, **params):
+def experiment(
+    project_name, exp_name, datastore=None, activity=None, author=None, **params
+):
     """Short form: create a project and open/create an experiment in one call.
 
     Parameters
@@ -14,6 +16,11 @@ def experiment(project_name, exp_name, datastore=None, **params):
     exp_name : str
     datastore : str
         Filesystem path to the datastore root.
+    activity : str, optional
+        The script, notebook, or process producing this project's data.
+        Auto-detected where possible if omitted.
+    author : str, optional
+        Overrides the auto-detected OS username.
     **params
         Experiment params as keyword args.
 
@@ -23,7 +30,7 @@ def experiment(project_name, exp_name, datastore=None, **params):
     """
     if datastore is None:
         raise TypeError("datastore is required")
-    proj = init(project_name, datastore=datastore)
+    proj = init(project_name, datastore=datastore, activity=activity, author=author)
     return proj.experiment(exp_name, **params)
 
 

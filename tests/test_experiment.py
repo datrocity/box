@@ -73,3 +73,53 @@ def test_experiment_short_form_via_module(tmp_path):
     )
     exp.save({"k": 1}, "cfg")
     assert exp.load("cfg") == {"k": 1}
+
+
+def test_experiment_manifest_records_activity_and_author_override(tmp_path):
+    proj = init(
+        "walker", datastore=str(tmp_path), activity="pipeline.py", author="alice"
+    )
+    proj.experiment("baseline", lr=0.01)
+    walker = tmp_path / "walker"
+    exp_folder = next(p for p in walker.iterdir() if p.name != "global")
+    manifest = json.loads((exp_folder / "manifest.json").read_text())
+    assert manifest["provenance"]["activity"] == "pipeline.py"
+    assert manifest["provenance"]["author"] == "alice"
+
+
+def test_experiment_artifact_manifest_inherits_activity_and_author(tmp_path):
+    proj = init(
+        "walker", datastore=str(tmp_path), activity="pipeline.py", author="alice"
+    )
+    exp = proj.experiment("baseline", lr=0.01)
+    exp.save({"k": 1}, "cfg")
+
+    walker = tmp_path / "walker"
+    exp_folder = next(p for p in walker.iterdir() if p.name != "global")
+    manifest = json.loads((exp_folder / "cfg" / "v1.manifest.json").read_text())
+    assert manifest["provenance"]["activity"] == "pipeline.py"
+    assert manifest["provenance"]["author"] == "alice"
+
+
+def test_experiment_auto_detects_author_when_not_given(tmp_path):
+    proj = init("walker", datastore=str(tmp_path))
+    proj.experiment("baseline", lr=0.01)
+    walker = tmp_path / "walker"
+    exp_folder = next(p for p in walker.iterdir() if p.name != "global")
+    manifest = json.loads((exp_folder / "manifest.json").read_text())
+    assert manifest["provenance"]["author"] == proj.author
+
+
+def test_experiment_business_card_includes_activity_when_set(tmp_path):
+    proj = init("walker", datastore=str(tmp_path), activity="pipeline.py")
+    exp = proj.experiment("baseline", lr=0.01)
+    card = exp._business_card("result", 1)
+    assert card["activity"] == "pipeline.py"
+
+
+def test_experiment_business_card_omits_activity_when_none(tmp_path):
+    proj = init("walker", datastore=str(tmp_path))
+    proj.activity = None
+    exp = proj.experiment("baseline", lr=0.01)
+    card = exp._business_card("result", 1)
+    assert "activity" not in card
