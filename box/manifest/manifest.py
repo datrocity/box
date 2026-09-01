@@ -47,7 +47,7 @@ class Manifest:
 
     def to_json(self):
         """Return the manifest as a JSON string."""
-        return json.dumps(self.sections, indent=2)
+        return json.dumps(self.sections, indent=2) + "\n"
 
     @classmethod
     def from_json(cls, text):

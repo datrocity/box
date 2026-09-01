@@ -4,6 +4,11 @@ import json
 
 import pandas as pd
 
+from box.conventions import (
+    EXPERIMENT_MANIFEST_FILENAME,
+    MANIFEST_SUFFIX,
+    PARAMS_FILENAME,
+)
 from box.errors import ArtifactNotFound
 
 
@@ -48,7 +53,7 @@ class Run:
             ) from None
         data_files = [
             c for c in children
-            if not c.endswith(".manifest.json") and c.startswith("v")
+            if not c.endswith(MANIFEST_SUFFIX) and c.startswith("v")
         ]
         if not data_files:
             raise ArtifactNotFound(
@@ -184,9 +189,11 @@ class RunSet:
 def _load_run(project, folder):
     """Read a run's params.json + manifest.json and return a Run."""
     ds = project._datastore
-    params_text = ds.read(f"{folder}/params.json").decode("utf-8")
+    params_text = ds.read(f"{folder}/{PARAMS_FILENAME}").decode("utf-8")
     params = json.loads(params_text) or {}
-    manifest_text = ds.read(f"{folder}/manifest.json").decode("utf-8")
+    manifest_text = ds.read(f"{folder}/{EXPERIMENT_MANIFEST_FILENAME}").decode(
+        "utf-8"
+    )
     manifest = json.loads(manifest_text) or {}
     name = manifest.get("experiment", folder.split("__", 2)[1])
     return Run(project, folder, name, params)
@@ -204,6 +211,6 @@ def load_runs(project):
         if entry == "global":
             continue
         folder = f"{project.name}/{entry}"
-        if ds.exists(f"{folder}/params.json"):
+        if ds.exists(f"{folder}/{PARAMS_FILENAME}"):
             runs.append(_load_run(project, folder))
     return RunSet(runs)

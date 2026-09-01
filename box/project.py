@@ -3,6 +3,7 @@
 import weakref
 
 from box.artifact import get_artifact_for
+from box.conventions import MANIFEST_SUFFIX, latest_version, next_version
 from box.errors import ArtifactNotFound
 from box.manifest.lineage import author_source, git_source, timestamp_source
 from box.manifest.manifest import Manifest
@@ -45,31 +46,10 @@ class Project:
             return []
 
     def _next_version(self, artifact_name):
-        children = self._list_artifact_dir(artifact_name)
-        existing = [
-            c
-            for c in children
-            if c.startswith("v")
-            and "." in c
-            and c.split(".")[0][1:].isdigit()
-            and not c.endswith(".manifest.json")
-        ]
-        if not existing:
-            return 1
-        nums = [int(c.split(".")[0][1:]) for c in existing]
-        return max(nums) + 1
+        return next_version(self._list_artifact_dir(artifact_name))
 
     def _latest_version(self, artifact_name):
-        children = self._list_artifact_dir(artifact_name)
-        data_files = [
-            c
-            for c in children
-            if c.startswith("v") and not c.endswith(".manifest.json")
-        ]
-        if not data_files:
-            return None
-        nums = [int(c.split(".")[0][1:]) for c in data_files]
-        return max(nums)
+        return latest_version(self._list_artifact_dir(artifact_name))
 
     def _business_card(self, name, version):
         """Build the stringified 'business card' embedded inside artifacts."""
@@ -118,7 +98,7 @@ class Project:
         existing_version = self._latest_version(name) if self.has(name) else None
         if existing_version is not None:
             prev_manifest_path = (
-                f"{self._artifact_dir(name)}/v{existing_version}.manifest.json"
+                f"{self._artifact_dir(name)}/v{existing_version}{MANIFEST_SUFFIX}"
             )
             prev = Manifest.from_json(
                 self._datastore.read(prev_manifest_path).decode("utf-8")
@@ -156,7 +136,7 @@ class Project:
             data_file = next(
                 c
                 for c in children
-                if c.startswith(f"v{target}.") and not c.endswith(".manifest.json")
+                if c.startswith(f"v{target}.") and not c.endswith(MANIFEST_SUFFIX)
             )
         except StopIteration:
             raise ArtifactNotFound(
@@ -236,11 +216,11 @@ class Project:
         m.merge("provenance", timestamp_source())
         m.merge("provenance", author_source())
         m.append("runs", {**timestamp_source(), **author_source()})
-        path = f"{self._artifact_dir(name)}/v{version}.manifest.json"
+        path = f"{self._artifact_dir(name)}/v{version}{MANIFEST_SUFFIX}"
         self._datastore.write(path, m.to_json().encode("utf-8"))
 
     def _append_run_to_manifest(self, name, version):
-        path = f"{self._artifact_dir(name)}/v{version}.manifest.json"
+        path = f"{self._artifact_dir(name)}/v{version}{MANIFEST_SUFFIX}"
         text = self._datastore.read(path).decode("utf-8")
         m = Manifest.from_json(text)
         m.append("runs", {**timestamp_source(), **author_source()})

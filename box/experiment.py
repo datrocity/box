@@ -4,7 +4,14 @@ import datetime as dt
 import json
 
 from box.artifact import get_artifact_for
-from box.conventions import experiment_folder_name
+from box.conventions import (
+    EXPERIMENT_MANIFEST_FILENAME,
+    MANIFEST_SUFFIX,
+    PARAMS_FILENAME,
+    experiment_folder_name,
+    latest_version,
+    next_version,
+)
 from box.errors import ArtifactNotFound
 from box.manifest.lineage import author_source, git_source, timestamp_source
 from box.manifest.manifest import Manifest
@@ -42,8 +49,10 @@ class Experiment:
             self._folder = base
             self._datastore.makedirs(self._folder)
             self._datastore.write(
-                f"{self._folder}/params.json",
-                json.dumps(self.params, sort_keys=True, indent=2).encode("utf-8"),
+                f"{self._folder}/{PARAMS_FILENAME}",
+                (json.dumps(self.params, sort_keys=True, indent=2) + "\n").encode(
+                    "utf-8"
+                ),
             )
             self._write_experiment_manifest()
 
@@ -122,7 +131,8 @@ class Experiment:
         m.merge("provenance", timestamp_source())
         m.merge("provenance", author_source())
         self._datastore.write(
-            f"{self._folder}/manifest.json", m.to_json().encode("utf-8")
+            f"{self._folder}/{EXPERIMENT_MANIFEST_FILENAME}",
+            m.to_json().encode("utf-8"),
         )
 
     def _artifact_dir(self, artifact_name):
@@ -136,31 +146,13 @@ class Experiment:
             return []
 
     def _next_version(self, artifact_name):
-        children = self._list_artifact_dir(artifact_name)
-        nums = []
-        for c in children:
-            if c.startswith("v") and not c.endswith(".manifest.json"):
-                try:
-                    nums.append(int(c.split(".")[0][1:]))
-                except ValueError:
-                    pass
-        return (max(nums) + 1) if nums else 1
+        return next_version(self._list_artifact_dir(artifact_name))
 
     def _latest_version(self, artifact_name):
-        children = self._list_artifact_dir(artifact_name)
-        nums = []
-        for c in children:
-            if c.startswith("v") and not c.endswith(".manifest.json"):
-                try:
-                    nums.append(int(c.split(".")[0][1:]))
-                except ValueError:
-                    pass
-        return max(nums) if nums else None
+        return latest_version(self._list_artifact_dir(artifact_name))
 
     def _business_card(self, name, version):
         """Build the stringified 'business card' embedded inside artifacts."""
-        import json
-
         card = {
             "project": self._project.name,
             "experiment": self.name,
@@ -209,7 +201,7 @@ class Experiment:
         existing_version = self._latest_version(name) if self.has(name) else None
         if existing_version is not None:
             prev_manifest_path = (
-                f"{self._artifact_dir(name)}/v{existing_version}.manifest.json"
+                f"{self._artifact_dir(name)}/v{existing_version}{MANIFEST_SUFFIX}"
             )
             prev = Manifest.from_json(
                 self._datastore.read(prev_manifest_path).decode("utf-8")
@@ -250,7 +242,7 @@ class Experiment:
             data_file = next(
                 c
                 for c in children
-                if c.startswith(f"v{target}.") and not c.endswith(".manifest.json")
+                if c.startswith(f"v{target}.") and not c.endswith(MANIFEST_SUFFIX)
             )
         except StopIteration:
             raise ArtifactNotFound(
@@ -301,11 +293,11 @@ class Experiment:
         m.append("runs", {**timestamp_source(), **author_source()})
         if inputs:
             m.add("inputs", list(inputs))
-        path = f"{self._artifact_dir(name)}/v{version}.manifest.json"
+        path = f"{self._artifact_dir(name)}/v{version}{MANIFEST_SUFFIX}"
         self._datastore.write(path, m.to_json().encode("utf-8"))
 
     def _append_run_to_manifest(self, name, version):
-        path = f"{self._artifact_dir(name)}/v{version}.manifest.json"
+        path = f"{self._artifact_dir(name)}/v{version}{MANIFEST_SUFFIX}"
         text = self._datastore.read(path).decode("utf-8")
         m = Manifest.from_json(text)
         m.append("runs", {**timestamp_source(), **author_source()})

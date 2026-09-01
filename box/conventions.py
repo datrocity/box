@@ -7,6 +7,10 @@ import enum
 import hashlib
 import json
 
+PARAMS_FILENAME = "params.json"
+EXPERIMENT_MANIFEST_FILENAME = "manifest.json"
+MANIFEST_SUFFIX = ".manifest.json"
+
 
 class WriteMode(enum.Enum):
     """Behavior when writing an artifact that may already have a prior version.
@@ -68,3 +72,73 @@ def experiment_folder_name(creation_date, name, params):
         A folder name in the form ``YYYY-MM-DD__<name>__<hash>``.
     """
     return f"{creation_date.isoformat()}__{name}__{params_hash(params)}"
+
+
+def is_data_file(filename):
+    """Return True if ``filename`` is a versioned artifact data file.
+
+    Excludes the per-version manifest sidecar (``v{N}.manifest.json``), which
+    shares the ``v{N}`` prefix but is not the data file itself.
+
+    Parameters
+    ----------
+    filename : str
+
+    Returns
+    -------
+    bool
+    """
+    return filename.startswith("v") and not filename.endswith(MANIFEST_SUFFIX)
+
+
+def parse_version(filename):
+    """Extract the version number from a versioned filename like ``v3.parquet``.
+
+    Parameters
+    ----------
+    filename : str
+
+    Returns
+    -------
+    int or None
+        None if the filename does not start with ``v<digits>``.
+    """
+    try:
+        return int(filename.split(".")[0][1:])
+    except ValueError:
+        return None
+
+
+def latest_version(children):
+    """Return the highest existing version number among data files.
+
+    Parameters
+    ----------
+    children : iterable of str
+        Filenames in an artifact directory.
+
+    Returns
+    -------
+    int or None
+        None if there are no data files.
+    """
+    nums = [n for n in (parse_version(c) for c in children if is_data_file(c))
+            if n is not None]
+    return max(nums) if nums else None
+
+
+def next_version(children):
+    """Return the version number to use for a new save.
+
+    Parameters
+    ----------
+    children : iterable of str
+        Filenames in an artifact directory.
+
+    Returns
+    -------
+    int
+        One past the current latest version, or 1 if there are none yet.
+    """
+    latest = latest_version(children)
+    return (latest + 1) if latest is not None else 1
