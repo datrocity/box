@@ -1,5 +1,6 @@
+import json
+
 import pytest
-import yaml
 
 from box import init
 from box.errors import ArtifactNotFound
@@ -18,7 +19,10 @@ def test_identical_save_does_not_create_new_version(tmp_path):
     exp.save({"k": 1}, "cfg")
 
     files = sorted((_exp_folder(tmp_path) / "cfg").iterdir())
-    data_files = [f for f in files if f.name.endswith(".json")]
+    data_files = [
+        f for f in files
+        if f.name.endswith(".json") and not f.name.endswith(".manifest.json")
+    ]
     assert len(data_files) == 1
     assert data_files[0].name == "v1.json"
 
@@ -29,8 +33,8 @@ def test_identical_save_appends_run_record(tmp_path):
     exp.save({"k": 1}, "cfg")
     exp.save({"k": 1}, "cfg")
 
-    manifest = yaml.safe_load(
-        (_exp_folder(tmp_path) / "cfg" / "v1.manifest.yml").read_text()
+    manifest = json.loads(
+        (_exp_folder(tmp_path) / "cfg" / "v1.manifest.json").read_text()
     )
     assert len(manifest["runs"]) == 2
 
@@ -44,7 +48,7 @@ def test_different_save_creates_new_version(tmp_path):
     versions = sorted(
         f.name
         for f in (_exp_folder(tmp_path) / "cfg").iterdir()
-        if f.name.endswith(".json")
+        if f.name.endswith(".json") and not f.name.endswith(".manifest.json")
     )
     assert versions == ["v1.json", "v2.json"]
 

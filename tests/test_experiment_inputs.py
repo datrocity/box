@@ -16,9 +16,9 @@ Design under test:
 """
 
 import gc
+import json
 
 import pytest
-import yaml
 
 from box import init
 from box.errors import ArtifactNotFound
@@ -30,8 +30,8 @@ def _experiment_folder(tmp_path):
 
 
 def _read_inputs(exp_folder, artifact_name, version=1):
-    manifest_path = exp_folder / artifact_name / f"v{version}.manifest.yml"
-    return yaml.safe_load(manifest_path.read_text()).get("inputs", [])
+    manifest_path = exp_folder / artifact_name / f"v{version}.manifest.json"
+    return json.loads(manifest_path.read_text()).get("inputs", [])
 
 
 def test_experiment_scope_load_is_recorded_in_next_save(tmp_path):

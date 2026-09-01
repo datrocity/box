@@ -1,8 +1,8 @@
 import datetime as dt
+import json
 
 import pandas as pd
 import pandas.testing as pdt
-import yaml
 
 from box import init
 
@@ -22,12 +22,12 @@ def test_experiment_creates_dated_folder(tmp_path):
     assert folder.startswith(_today() + "__baseline__")
 
 
-def test_experiment_writes_params_yaml(tmp_path):
+def test_experiment_writes_params_json(tmp_path):
     proj = init("walker", datastore=str(tmp_path))
     proj.experiment("baseline", lr=0.01, prior="uniform")
     walker = tmp_path / "walker"
     exp_folder = next(p for p in walker.iterdir() if p.name != "global")
-    params = yaml.safe_load((exp_folder / "params.yaml").read_text())
+    params = json.loads((exp_folder / "params.json").read_text())
     assert params == {"lr": 0.01, "prior": "uniform"}
 
 

@@ -1,8 +1,7 @@
 """Experiment: a named run with frozen params, backed by a folder."""
 
 import datetime as dt
-
-import yaml
+import json
 
 from box.artifact import get_artifact_for
 from box.conventions import experiment_folder_name
@@ -43,8 +42,8 @@ class Experiment:
             self._folder = base
             self._datastore.makedirs(self._folder)
             self._datastore.write(
-                f"{self._folder}/params.yaml",
-                yaml.safe_dump(self.params, sort_keys=True).encode("utf-8"),
+                f"{self._folder}/params.json",
+                json.dumps(self.params, sort_keys=True, indent=2).encode("utf-8"),
             )
             self._write_experiment_manifest()
 
@@ -123,7 +122,7 @@ class Experiment:
         m.merge("provenance", timestamp_source())
         m.merge("provenance", author_source())
         self._datastore.write(
-            f"{self._folder}/manifest.yml", m.to_yaml().encode("utf-8")
+            f"{self._folder}/manifest.json", m.to_json().encode("utf-8")
         )
 
     def _artifact_dir(self, artifact_name):
@@ -140,7 +139,7 @@ class Experiment:
         children = self._list_artifact_dir(artifact_name)
         nums = []
         for c in children:
-            if c.startswith("v") and not c.endswith(".manifest.yml"):
+            if c.startswith("v") and not c.endswith(".manifest.json"):
                 try:
                     nums.append(int(c.split(".")[0][1:]))
                 except ValueError:
@@ -151,7 +150,7 @@ class Experiment:
         children = self._list_artifact_dir(artifact_name)
         nums = []
         for c in children:
-            if c.startswith("v") and not c.endswith(".manifest.yml"):
+            if c.startswith("v") and not c.endswith(".manifest.json"):
                 try:
                     nums.append(int(c.split(".")[0][1:]))
                 except ValueError:
@@ -210,9 +209,9 @@ class Experiment:
         existing_version = self._latest_version(name) if self.has(name) else None
         if existing_version is not None:
             prev_manifest_path = (
-                f"{self._artifact_dir(name)}/v{existing_version}.manifest.yml"
+                f"{self._artifact_dir(name)}/v{existing_version}.manifest.json"
             )
-            prev = Manifest.from_yaml(
+            prev = Manifest.from_json(
                 self._datastore.read(prev_manifest_path).decode("utf-8")
             )
             if prev.sections.get("data_hash") == data_hash:
@@ -251,7 +250,7 @@ class Experiment:
             data_file = next(
                 c
                 for c in children
-                if c.startswith(f"v{target}.") and not c.endswith(".manifest.yml")
+                if c.startswith(f"v{target}.") and not c.endswith(".manifest.json")
             )
         except StopIteration:
             raise ArtifactNotFound(
@@ -302,12 +301,12 @@ class Experiment:
         m.append("runs", {**timestamp_source(), **author_source()})
         if inputs:
             m.add("inputs", list(inputs))
-        path = f"{self._artifact_dir(name)}/v{version}.manifest.yml"
-        self._datastore.write(path, m.to_yaml().encode("utf-8"))
+        path = f"{self._artifact_dir(name)}/v{version}.manifest.json"
+        self._datastore.write(path, m.to_json().encode("utf-8"))
 
     def _append_run_to_manifest(self, name, version):
-        path = f"{self._artifact_dir(name)}/v{version}.manifest.yml"
+        path = f"{self._artifact_dir(name)}/v{version}.manifest.json"
         text = self._datastore.read(path).decode("utf-8")
-        m = Manifest.from_yaml(text)
+        m = Manifest.from_json(text)
         m.append("runs", {**timestamp_source(), **author_source()})
-        self._datastore.write(path, m.to_yaml().encode("utf-8"))
+        self._datastore.write(path, m.to_json().encode("utf-8"))
