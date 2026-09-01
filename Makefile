@@ -1,19 +1,24 @@
 .PHONY: setup test cov lint format watch
 
+# Unset any inherited VIRTUAL_ENV so poetry always uses its own managed
+# environment for this project, even if the shell has an unrelated venv
+# activated (poetry, unlike Hatch, honors an inherited VIRTUAL_ENV).
+POETRY := env -u VIRTUAL_ENV -u VIRTUAL_ENV_PROMPT poetry
+
 setup:
-	hatch env create
+	$(POETRY) install
 
 test:
-	hatch run test
+	$(POETRY) run pytest tests
 
 cov:
-	hatch run cov
+	$(POETRY) run pytest --cov=box --cov-report=term-missing tests
 
 lint:
-	hatch run lint
+	$(POETRY) run ruff check .
 
 format:
-	hatch run format
+	$(POETRY) run ruff format .
 
 watch:
-	hatch run pytest --looponfail tests
+	$(POETRY) run pytest --looponfail tests

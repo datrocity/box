@@ -9,7 +9,6 @@ htmlcov/
 .venv/
 dist/
 build/
-.hatch/
 .ipynb_checkpoints/
 
 # Notebook byproducts (executed catalogs, executed.ipynb).

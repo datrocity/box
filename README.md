@@ -58,7 +58,7 @@ Every experiment folder is self-contained: `ls` shows every artifact that run pr
 
 ## Development
 
-    make setup        # create hatch env
+    make setup        # create poetry env
     make test         # run tests
     make lint         # ruff
     make format       # ruff format

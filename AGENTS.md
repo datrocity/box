@@ -17,7 +17,7 @@ queryable identity. Four nouns:
 
 ## Development commands
 
-    make setup        # create hatch env
+    make setup        # create poetry env
     make test         # run all tests
     make cov          # coverage report
     make lint         # ruff check
