@@ -27,6 +27,14 @@ results = simulate(lr=exp.lr, prior=exp.prior)
 exp.save(results, "result")
 ```
 
+Every manifest records `author` and `activity` (the script/notebook/process
+name) automatically where possible. If the user names a specific script,
+notebook, or author explicitly, pass them at init instead of guessing:
+
+```python
+proj = box.init("walker", datastore="./catalog", activity="train.py", author="jane")
+```
+
 ## Cache expensive steps with @compute_or_load
 
 At experiment scope:

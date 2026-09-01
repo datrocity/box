@@ -6,7 +6,9 @@ best-effort output.
 """
 
 import getpass
+import os
 import subprocess
+import sys
 from datetime import datetime, timezone
 
 
@@ -24,18 +26,73 @@ def timestamp_source():
     return {"created_at": now}
 
 
-def author_source():
-    """Return the current OS user.
+def detect_author():
+    """Best-effort detection of the current OS user.
+
+    Returns
+    -------
+    str
+        The current OS username, or ``"unknown"`` on failure.
+    """
+    try:
+        return getpass.getuser()
+    except Exception:
+        return "unknown"
+
+
+def detect_activity():
+    """Best-effort detection of the running script or notebook name.
+
+    Checks the ``JPY_SESSION_NAME`` environment variable first -- set by
+    JupyterLab and Notebook 7+ to the notebook's path for the kernel behind
+    it -- then falls back to the running script's filename. Returns None if
+    neither is available: a plain REPL, ``python -c``, or an older Jupyter
+    frontend that does not set ``JPY_SESSION_NAME``.
+
+    Returns
+    -------
+    str or None
+    """
+    session_name = os.environ.get("JPY_SESSION_NAME")
+    if session_name:
+        return os.path.basename(session_name)
+    main = sys.modules.get("__main__")
+    script_path = getattr(main, "__file__", None)
+    if script_path:
+        return os.path.basename(script_path)
+    return None
+
+
+def author_source(author):
+    """Return an author dict fragment for a manifest.
+
+    Parameters
+    ----------
+    author : str
 
     Returns
     -------
     dict
-        ``{"author": "<username>"}``. Falls back to ``"unknown"`` on failure.
+        ``{"author": author}``.
     """
-    try:
-        return {"author": getpass.getuser()}
-    except Exception:
-        return {"author": "unknown"}
+    return {"author": author}
+
+
+def activity_source(activity):
+    """Return an activity dict fragment for a manifest.
+
+    Parameters
+    ----------
+    activity : str or None
+        The script, notebook, or process name that produced this. None if it
+        could not be determined and no override was given.
+
+    Returns
+    -------
+    dict
+        ``{"activity": activity}``.
+    """
+    return {"activity": activity}
 
 
 def _git(args, cwd):

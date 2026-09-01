@@ -5,6 +5,17 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Manifests now record `activity`: the script, notebook, or process name
+  that produced the data. Auto-detected where possible (the running
+  script's filename, or a notebook's name via `JPY_SESSION_NAME` on
+  JupyterLab/Notebook 7+); pass `activity=` to `box.init`/`Project`/
+  `box.experiment` to set it explicitly, or `author=` to override the
+  auto-detected OS username. Both are recorded in every manifest's
+  `provenance` section and in the embedded business card, where the
+  artifact format supports it.
+
 ### Changed
 
 - Metadata files (`params.yaml`/`manifest.yml`/`v{N}.manifest.yml`) are

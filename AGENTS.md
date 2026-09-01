@@ -15,6 +15,11 @@ queryable identity. Four nouns:
 - **Version** — automatic; identical `data_hash` reuses the same version
   and appends a run record to the manifest.
 
+Every manifest's `provenance` section also records `author` (OS username)
+and `activity` (the running script/notebook name), both auto-detected where
+possible and overridable via `Project(..., activity=..., author=...)` /
+`box.init(..., activity=..., author=...)`. See `box/manifest/lineage.py`.
+
 ## Development commands
 
     make setup        # create local .venv and install

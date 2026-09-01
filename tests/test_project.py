@@ -1,9 +1,15 @@
+import json
+
 import pandas as pd
 import pandas.testing as pdt
 import pytest
 
 from box.errors import ArtifactNotFound
 from box.project import Project
+
+
+def _read_manifest(path):
+    return json.loads(path.read_text())
 
 
 def test_project_creates_datastore_root(tmp_path):
@@ -89,3 +95,67 @@ def test_project_write_on_change_no_new_file_for_identical_data(tmp_path):
     ]
     assert len(data_files) == 1
     assert data_files[0].name == "v1.json"
+
+
+def test_project_records_activity_and_author_override(tmp_path):
+    proj = Project(
+        "walker",
+        datastore=str(tmp_path / "catalog"),
+        activity="pipeline.py",
+        author="alice",
+    )
+    assert proj.activity == "pipeline.py"
+    assert proj.author == "alice"
+
+    proj.save({"k": 1}, "cfg")
+    manifest = _read_manifest(
+        tmp_path / "catalog" / "walker" / "global" / "cfg" / "v1.manifest.json"
+    )
+    assert manifest["provenance"]["activity"] == "pipeline.py"
+    assert manifest["provenance"]["author"] == "alice"
+
+
+def test_project_auto_detects_author_when_not_given(tmp_path):
+    proj = Project("walker", datastore=str(tmp_path / "catalog"))
+    assert isinstance(proj.author, str)
+    assert proj.author
+
+    proj.save({"k": 1}, "cfg")
+    manifest = _read_manifest(
+        tmp_path / "catalog" / "walker" / "global" / "cfg" / "v1.manifest.json"
+    )
+    assert manifest["provenance"]["author"] == proj.author
+
+
+def test_project_run_record_carries_activity_and_author(tmp_path):
+    proj = Project(
+        "walker",
+        datastore=str(tmp_path / "catalog"),
+        activity="pipeline.py",
+        author="alice",
+    )
+    proj.save({"k": 1}, "cfg")
+    proj.save({"k": 1}, "cfg")  # identical -> appends a run record
+
+    manifest = _read_manifest(
+        tmp_path / "catalog" / "walker" / "global" / "cfg" / "v1.manifest.json"
+    )
+    assert len(manifest["runs"]) == 2
+    for run in manifest["runs"]:
+        assert run["activity"] == "pipeline.py"
+        assert run["author"] == "alice"
+
+
+def test_project_business_card_includes_activity_when_set(tmp_path):
+    proj = Project(
+        "walker", datastore=str(tmp_path / "catalog"), activity="pipeline.py"
+    )
+    card = proj._business_card("cfg", 1)
+    assert card["activity"] == "pipeline.py"
+
+
+def test_project_business_card_omits_activity_when_none(tmp_path):
+    proj = Project("walker", datastore=str(tmp_path / "catalog"))
+    proj.activity = None
+    card = proj._business_card("cfg", 1)
+    assert "activity" not in card
