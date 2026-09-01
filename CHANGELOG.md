@@ -3,6 +3,12 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+### Added
+
+### Changed
+
 ## [0.2.0] - 2026-09-01
 
 ### Added
