@@ -4,9 +4,9 @@ Experiment-first research catalog for scientists. Give research results a persis
 
 `box` is a small Python library introducing a small number of commands to save, load, and query the artifacts that your research creates: data, tables, plots, anything! Lineage, versioning, smart caching, and meta-analysis fall out of a handful of explicit calls in the flow of normal research scripts and notebooks.
 
-`box` is not an organizing tool that will force you to join a new tidiness cult.
+`box` is not an organizing tool that forces you to join a new tidiness cult.
 
-**NEW** `box` now ships an AI skill to help you import your messy research files into `box`, using your favorite AI assistant!!
+**NEW** `box` now ships with an AI skill to help you import your messy research files into `box`, using your favorite AI assistant!!
 
 ## 1. Why box?
 
