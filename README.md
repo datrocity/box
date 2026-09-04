@@ -71,6 +71,8 @@ The metadata of each artifact also records who and what produced it: the OS user
 project = box.init("walker", datastore="./catalog", activity="train.py", author="jane")
 ```
 
+`activity` is just a string, it could also be "manual fix", "lambda function on AWS", or "interactive section with python".
+
 `box` picks a storage format from the data's type:
 
 | Python type | On-disk format | Notes |
