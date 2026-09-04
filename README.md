@@ -6,7 +6,7 @@ Experiment-first research catalog for scientists. Give research results a persis
 
 `box` is not an organizing tool that will force you to join a new tidiness cult.
 
-**NEW** `box` now ships an AI skill to help you import your messy research files into `box`, using your favorite AI assistant
+**NEW** `box` now ships an AI skill to help you import your messy research files into `box`, using your favorite AI assistant!!
 
 ## 1. Why box?
 
@@ -34,11 +34,11 @@ Every experiment folder is self-contained: `params.json` reconstructs the params
 
 ## 2. Projects, experiments, params, save/load
 
-There's four things you need to learn to understand `box`:
+There's only five things you need to learn to understand `box`:
 
 - An **artifact** is anything you want to save (a DataFrame, an array, an image, a dictionary, ...).
 - Each artifact is saved with a **version**. By default, `box` saves you from overwriting an existing experimental file, and instead creates a set of versions as `v1`, `v2`, etc. so you can always reproduce a plot, even if it's based on old data. `box` is also clever in that it always `load()`s the latest version of an artifact unless you ask for a specific version, and if `save()` data that is identical to the previous version, it doesn't create a new file, it just appends a record to the metadata.
-- An **experiment** contains all of the artifacts created by one run of your analyses and simulations. When your code runs on a grid of parameters, `box` creates a folder for each (experiment, parameter) instance. `box` also provides some utilities to later load the results for the set of all parameters, or query a subset of them (as in, `.where(param1=0.3, param2="gaussian")`.
+- An **experiment** contains all of the artifacts created by one **run** of your analyses and simulations. When your code runs on a grid of parameters, `box` creates a folder for each (experiment, parameter) instance. `box` also provides some utilities to later load the results for the set of all parameters, or query a subset of them (as in, `.where(param1=0.3, param2="gaussian")`.
 - A **project** is the root folder for a larger research effort. It contains a set of experiments, and any global artifacts that are shared between them (e.g., some preprocessed input data, or the stimuli to use in an experiment).
 
 A quick example of a typical `box` session:
@@ -87,7 +87,9 @@ See `notebook/01_walkthrough.ipynb` for a full walkthrough.
 
 ## 3. RunSets: meta-analysis across experiments
 
-Once you've run a grid of experiments, `project.runs()` gives you a filterable, iterable view over all of them — this is where you stop hunting through folders and start querying:
+Once you've run a grid of experiments, `project.runs()` gives you way to iterate over them or collect the one you're interested in (e.g., all runs with a specific parameter).
+
+a filterable, iterable view over all of them — this is where you stop hunting through folders and start querying:
 
 ```python
 runs = project.runs()
@@ -107,7 +109,19 @@ for run, result in hits.load_all("result"):
 
 ## 4. Caching with `@compute_or_load`
 
-Expensive steps that don't change across a sweep — preprocessing, a slow simulation setup — shouldn't rerun for every experiment. `compute_or_load` is a decorator: the first call computes and saves, every later call (in this run or a future one) just loads:
+Sometimes you have a notebook that starts by preprocessing a big set of raw data that is used in the rest of the script. Every time you run the analysis, the same preprocessing happens and it's really boring.
+
+In `box`, you could do something like this to do that step only the first time, and then loading it from your catalog:
+
+```python
+if not project.has("my_processed_input"):
+    data = expensive_preprocessing()
+    project.save(data, "my_processed_input")
+else:
+    data = project.load("my_processed_input")
+```
+
+Alternatively, `box` provides a `compute_or_load` decorator. The first call to the function computes and saves, and every later call (in this run or a future one) just loads:
 
 ```python
 @project.compute_or_load("processed_input")    # project scope: shared across all experiments
@@ -121,22 +135,12 @@ def local_step():
     ...
 ```
 
-`compute_or_load` is just a shorthand for a `has()`/`load()`/`save()` check you could write yourself — spelled out manually, `preprocess()` above is:
-
-```python
-if project.has("processed_input"):
-    data = project.load("processed_input")
-else:
-    data = expensive_preprocessing()
-    project.save(data, "processed_input")
-```
-
 ## 5. AI assistant support
 
-`box` ships two skills (`box/skills/*.md`) that teach an AI coding assistant (Claude Code, Cursor, etc.) to use the library correctly:
+`box` ships two AI skills (`box/skills/*.md`) that teach an AI coding assistant (Claude Code, Cursor, etc.) to use the library correctly:
 
-- **Writing box code** — the four-noun API above, so an assistant writes `project.experiment(...)` / `exp.save(...)` correctly instead of guessing.
-- **Importing messy data** — a guided workflow for turning a folder of years-old, inconsistently named CSVs, plots, and configs into a proper box catalog: the assistant inventories the folder, proposes a plan grouping files into candidate experiments, and only imports after you approve it.
+- **Writing `box` code**: it tells your AI how to use the `box` API, so it can use it appropriately
+- **Importing messy data**: A guided workflow for turning a folder of years-old, inconsistently named CSVs, plots, and config files into a proper box catalog. The assistant inventories the folder, proposes a plan grouping files into candidate experiments, and only imports after you approve it.
 
 Install them after `pip install box`:
 
