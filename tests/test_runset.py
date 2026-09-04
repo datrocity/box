@@ -51,6 +51,43 @@ def test_frame_returns_dataframe_with_params(tmp_path):
     assert len(df) == 4
 
 
+def test_where_filters_by_name(tmp_path):
+    proj = _seed(tmp_path)
+    hits = list(proj.runs().where(name="with_prior"))
+    assert len(hits) == 1
+    assert hits[0].name == "with_prior"
+
+
+def test_where_by_name_matches_all_params_variants(tmp_path):
+    """The grid pattern: one name, several params variants -- where(name=...)
+    returns all of them, not just one."""
+    proj = init("walker", datastore=str(tmp_path))
+    for lr in [0.01, 0.02, 0.05]:
+        exp = proj.experiment("baseline", lr=lr)
+        exp.save({"lr": lr}, "cfg")
+
+    hits = proj.runs().where(name="baseline")
+    lrs = sorted(r.params["lr"] for r in hits)
+    assert lrs == [0.01, 0.02, 0.05]
+
+
+def test_where_combines_name_and_param(tmp_path):
+    proj = init("walker", datastore=str(tmp_path))
+    for lr in [0.01, 0.02, 0.05]:
+        exp = proj.experiment("baseline", lr=lr)
+        exp.save({"lr": lr}, "cfg")
+
+    hits = list(proj.runs().where(name="baseline", lr=0.02))
+    assert len(hits) == 1
+    assert hits[0].params["lr"] == 0.02
+
+
+def test_where_by_name_no_match_returns_empty(tmp_path):
+    proj = _seed(tmp_path)
+    hits = list(proj.runs().where(name="does_not_exist"))
+    assert hits == []
+
+
 def test_where_missing_param_excludes(tmp_path):
     proj = _seed(tmp_path)
     exp = proj.experiment("no_prior", lr=0.99)

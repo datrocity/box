@@ -89,7 +89,6 @@ See `notebook/01_walkthrough.ipynb` for a full walkthrough.
 
 Once you've run a grid of experiments, `project.runs()` gives you way to iterate over them or collect the one you're interested in (e.g., all runs with a specific parameter).
 
-a filterable, iterable view over all of them — this is where you stop hunting through folders and start querying:
 
 ```python
 runs = project.runs()
@@ -105,7 +104,7 @@ for run, result in hits.load_all("result"):
     plot(result, label=f"lr={run.params['lr']}")
 ```
 
-`where()` filters by exact param match; `frame()` / `summarize()` return a DataFrame with one row per run.
+`where()` filters by exact param match; pass `name=` to filter by experiment name instead, or combine both (e.g. `runs.where(name="baseline", lr=0.01)`). `frame()` / `summarize()` return a DataFrame with one row per run.
 
 ## 4. Caching with `@compute_or_load`
 

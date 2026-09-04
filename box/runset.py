@@ -98,14 +98,15 @@ class RunSet:
         return len(self._runs)
 
     def where(self, **criteria):
-        """Filter runs by exact param match.
+        """Filter runs by exact param match, or by experiment name.
 
-        Runs missing any of the criteria params are excluded.
+        ``name`` matches ``run.name`` directly. Every other keyword matches
+        against ``run.params``; runs missing that param are excluded.
 
         Parameters
         ----------
         **criteria
-            Param name -> required value.
+            ``name`` for the experiment name, or param name -> required value.
 
         Returns
         -------
@@ -113,6 +114,10 @@ class RunSet:
         """
         def match(run):
             for k, v in criteria.items():
+                if k == "name":
+                    if run.name != v:
+                        return False
+                    continue
                 if k not in run.params:
                     return False
                 if run.params[k] != v:
