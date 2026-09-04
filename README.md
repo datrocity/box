@@ -1,8 +1,8 @@
 # box
 
-Experiment-first research catalog for scientists. Give research results a persistent, queryable identity tied to the params and code that produced them.
+Experiment-first research catalog for scientists. Give research results a persistent, queryable identity tied to the parameters and code that produced them.
 
-`box` is a small Python library introducing a small number of commands to save, load, and query the artifacts that your research creates: data, tables, plots, anything! Lineage, versioning, smart caching, and meta-analysis fall out of a handful of explicit calls in the flow of normal research scripts and notebooks.
+`box` is a small Python library introducing a small number of commands to save, load, and query the artifacts that your research creates: data, tables, plots, anything! Lineage, versioning, smart caching, and meta-analysis fall out of a handful of calls in the flow of normal research scripts and notebooks.
 
 `box` is not an organizing tool that forces you to join a new tidiness cult.
 
@@ -10,9 +10,9 @@ Experiment-first research catalog for scientists. Give research results a persis
 
 ## 1. Why box?
 
-Every research project rediscovers the same problem: after enough experiments, `results/` turns into `run3_final.csv`, `run3_final_FIXED.csv`, `sweep_lr0.01/`, and a git history that no longer matches what actually produced any of them. Six months later, nobody — including you — can answer "which params made this plot?" or "what code produced this array?"
+Every research project rediscovers the same problem: after enough experiments, `results/` turns into `run3_final.csv`, `run3_final_FIXED.csv`, `sweep_lr0.01/`, and a git history that no longer matches what actually produced any of them. Six months later, nobody — including you — can answer "which parameters made this plot?" or "what code produced this array?"
 
-`box` answers that by giving every saved result an explicit identity: which **project** it belongs to, which **experiment** (a name plus the exact params) produced it, which git commit and author, and when. That identity travels with the file rather than living in a database you might lose. A compact "business card" of it (project, experiment, params, git commit, author, timestamp) is embedded directly in the data file itself whenever the format allows (parquet metadata, PNG text chunks, CSV comment lines), and the full record always lives in a small JSON file (`manifest.json`) saved right next to it. You don't need anything special to access your data, `ls` the folder, `cat` the manifest, copy your data around anywhere.
+`box` answers that by giving every saved result an explicit identity: which **project** it belongs to, which **experiment** (a name plus the exact parameters) produced it, which git commit, who's the author, and when it was created. That identity travels with the file rather than living in a database you might lose. A compact "business card" of it (project, experiment, parameters, git commit, author, timestamp) is embedded directly in the data file itself whenever the format allows (parquet metadata, PNG text chunks, CSV comment lines), and the full record always lives in a small JSON file (`manifest.json`) saved right next to it. You don't need anything special to access your data, `ls` the folder, `cat` the manifest, copy your data around anywhere.
 
 **Lineage** falls out for free: `box` keeps track of the data you `load()` when doing an experiment, and records it in the metadata of your results when you `save()`. Given a final analysis plot, you can always reconstruct the full graph of data that led to it.
 
@@ -30,9 +30,9 @@ On disk, it looks like this:
           v1.parquet
           v1.manifest.json
 
-Every experiment folder is self-contained: `params.json` reconstructs the params, and every artifact carries its own manifest, so a folder survives being copied or moved.
+Every experiment folder is self-contained: `params.json` reconstructs the parameters, and every artifact carries its own manifest, so a folder survives being copied or moved.
 
-## 2. Projects, experiments, params, save/load
+## 2. Projects, experiments, parameters, save/load
 
 There's only five things you need to learn to understand `box`:
 
@@ -98,13 +98,13 @@ summary = hits.summarize(
     final_loss=lambda r: r.load("result")["loss"].iloc[-1],
 )
 
-# same experiment name, different params (the common grid pattern) --
+# same experiment name, different parameters (the common grid pattern) --
 # load_all returns pairs, so same-name runs never collide
 for run, result in hits.load_all("result"):
     plot(result, label=f"lr={run.params['lr']}")
 ```
 
-`where()` filters by exact param match; pass `name=` to filter by experiment name instead, or combine both (e.g. `runs.where(name="baseline", lr=0.01)`). `frame()` / `summarize()` return a DataFrame with one row per run.
+`where()` filters by exact parameter match; pass `name=` to filter by experiment name instead, or combine both (e.g. `runs.where(name="baseline", lr=0.01)`). `frame()` / `summarize()` return a DataFrame with one row per run.
 
 ## 4. Caching with `@compute_or_load`
 
